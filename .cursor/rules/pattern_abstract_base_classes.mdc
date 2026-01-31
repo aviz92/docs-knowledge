@@ -1,0 +1,200 @@
+---
+description: Abstract Base Classes (ABCs) patterns, contracts, and implementation guidelines for Python code.
+globs: "**/*.py"
+alwaysApply: true
+---
+
+# Abstract Base Classes (ABCs)
+You are an expert in using Abstract Base Classes to define clear contracts and enforce interfaces in Python code.
+
+## 1. When to Use ABCs
+* **Framework Design**: When creating base classes that define extension points for plugins, repositories, or strategies.
+* **Runtime Enforcement**: When you need to prevent incomplete implementations from being instantiated.
+* **Shared Implementation**: When multiple classes need to share common behavior while enforcing specific method implementations.
+* **Explicit Contracts**: When you want to make interface requirements obvious in code, not just documentation.
+
+**Use ABCs when:**
+- Building plugin systems or extensible frameworks
+- Defining data access layers (Repository pattern)
+- Creating strategy patterns with interchangeable algorithms
+- Designing template method patterns
+- Need runtime guarantees that all methods are implemented
+
+**NEVER use Protocols instead**
+
+## 2. Basic ABC Implementation
+Always use the `ABC` helper class for simplicity:
+```python
+from abc import ABC, abstractmethod
+from typing import Any
+
+class Processor(ABC):
+    """Base class for data processors."""
+    
+    @abstractmethod
+    def process(self, data: Any) -> Any:
+        pass
+    
+    def run(self, data: Any) -> Any:
+        return self.process(data)
+```
+
+**Key Rules:**
+* Always use `@abstractmethod` decorator for methods that must be implemented
+* Abstract methods must have type hints
+* Concrete methods in abstract classes can call abstract methods (template method pattern)
+
+## 3. Abstract Properties, Classmethods, and Staticmethods
+**Decorator Order Matters:** `@abstractmethod` must be the innermost decorator.
+```python
+from abc import ABC, abstractmethod
+from typing import List
+
+class Config(ABC):
+    """Abstract configuration interface."""
+    
+    @property
+    @abstractmethod
+    def api_key(self) -> str:
+        pass
+    
+    @api_key.setter
+    @abstractmethod
+    def api_key(self, value: str) -> None:
+        pass
+    
+    @classmethod
+    @abstractmethod
+    def from_dict(cls, config: dict) -> "Config":
+        pass
+    
+    @staticmethod
+    @abstractmethod
+    def validate_config(config: dict) -> bool:
+        pass
+```
+
+**Correct Decorator Order:**
+* Properties: `@property` then `@abstractmethod`
+* Classmethods: `@classmethod` then `@abstractmethod`
+* Staticmethods: `@staticmethod` then `@abstractmethod`
+
+## 4. Common Patterns
+### Repository Pattern
+```python
+from abc import ABC, abstractmethod
+from typing import Optional, List, Dict, Any
+
+class Repository(ABC):
+    """Abstract repository interface for data access."""
+    
+    @abstractmethod
+    def find_by_id(self, id: int) -> Optional[Dict[str, Any]]:
+        pass
+    
+    @abstractmethod
+    def find_all(self) -> List[Dict[str, Any]]:
+        pass
+    
+    @abstractmethod
+    def save(self, entity: Dict[str, Any]) -> Dict[str, Any]:
+        pass
+    
+    def exists(self, id: int) -> bool:
+        return self.find_by_id(id) is not None
+```
+
+### Strategy Pattern
+```python
+from abc import ABC, abstractmethod
+
+class PaymentProcessor(ABC):
+    """Abstract payment processor interface."""
+    
+    @abstractmethod
+    def process_payment(self, amount: float) -> bool:
+        pass
+    
+    @abstractmethod
+    def get_processor_name(self) -> str:
+        pass
+```
+
+### Template Method Pattern
+```python
+from abc import ABC, abstractmethod
+from typing import Any
+
+class DataExporter(ABC):
+    """Abstract data exporter with template method."""
+    
+    def export(self, data: list) -> str:
+        if not self.validate(data):
+            raise ValueError("Data validation failed")
+        
+        formatted = self.format(data)
+        return self.serialize(formatted)
+    
+    @abstractmethod
+    def validate(self, data: list) -> bool:
+        pass
+    
+    @abstractmethod
+    def format(self, data: list) -> str:
+        pass
+    
+    @abstractmethod
+    def serialize(self, formatted: str) -> str:
+        pass
+```
+
+## 5. Implementation Requirements
+**All ABC implementations must:**
+* Include type hints for all abstract methods
+* Implement ALL abstract methods before instantiation
+* Follow the project's type hint and docstring standards
+
+**Example Implementation:**
+```python
+from typing import Optional, Dict, Any
+
+class InMemoryRepository(Repository):
+    """In-memory implementation of Repository."""
+    
+    def __init__(self) -> None:
+        self._storage: Dict[int, Dict[str, Any]] = {}
+        self._next_id: int = 1
+    
+    def find_by_id(self, id: int) -> Optional[Dict[str, Any]]:
+        return self._storage.get(id)
+    
+    def find_all(self) -> list[Dict[str, Any]]:
+        return list(self._storage.values())
+    
+    def save(self, entity: Dict[str, Any]) -> Dict[str, Any]:
+        if "id" not in entity:
+            entity["id"] = self._next_id
+            self._next_id += 1
+        self._storage[entity["id"]] = entity.copy()
+        return entity
+```
+
+## 7. Common Mistakes to Avoid
+* **Missing `@abstractmethod` decorator**: Without it, methods aren't enforced
+* **Wrong decorator order**: `@abstractmethod` must be innermost
+* **Trying to instantiate abstract classes**: They exist to be subclassed
+* **Not implementing all abstract methods**: Python prevents instantiation
+* **Expecting virtual subclasses to inherit methods**: They only affect type checks
+
+## 8. Integration with Project Standards
+* **Type Hints**: All abstract methods MUST have complete type hints
+* **SOLID Principles**: Use ABCs to enforce Dependency Inversion Principle
+* **Separation of Concerns**: Use ABCs to define clear interfaces between layers
+* **Testing**: ABCs make it easier to create mock implementations for testing
+
+## 9. When NOT to Use ABCs
+**Don't use ABCs when:**
+* You only need type checking (use Protocols instead)
+* Working with third-party code you can't modify (use Protocols)
+* You want maximum flexibility without inheritance requirements (use Protocols)
+* The contract is simple and doesn't need runtime enforcement
