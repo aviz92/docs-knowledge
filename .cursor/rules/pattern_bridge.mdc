@@ -1,0 +1,132 @@
+---
+description: Bridge pattern for separating abstraction from implementation.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Bridge Pattern
+
+## Introduction
+
+The Bridge pattern separates abstraction from implementation, allowing them to vary independently. It uses composition
+instead of inheritance to decouple the interface from the implementation, preventing a class explosion when you have
+multiple dimensions of variation.
+
+## When to Use
+
+* **Multiple Dimensions**: When you have multiple independent dimensions of variation
+* **Runtime Binding**: When you want to switch implementations at runtime
+* **Avoid Class Explosion**: When inheritance would lead to too many classes
+* **Platform Independence**: When you want to hide platform-specific implementations
+* **Shared Implementation**: When multiple abstractions can share the same implementation
+
+**Use Bridge when:**
+
+- You want to avoid a permanent binding between abstraction and implementation
+- You have multiple dimensions of variation that would create too many subclasses
+- You want to switch implementations at runtime
+- You want to share implementations across multiple objects
+
+## How to Use
+
+1. **Define Abstraction**: Create an abstract class that defines the high-level interface
+2. **Define Implementation Interface**: Create an interface for the implementation
+3. **Create Concrete Implementations**: Implement the implementation interface
+4. **Compose**: The abstraction holds a reference to the implementation interface
+5. **Delegate**: The abstraction delegates work to the implementation
+
+## Example
+
+```python
+from abc import ABC, abstractmethod
+
+
+# Implementation Interface
+class Renderer(ABC):
+    @abstractmethod
+    def render_circle(self, radius: float) -> None:
+        pass
+
+    @abstractmethod
+    def render_square(self, side: float) -> None:
+        pass
+
+
+# Concrete Implementations
+class VectorRenderer(Renderer):
+    def render_circle(self, radius: float) -> None:
+        print(f"Drawing a circle of radius {radius} as vector")
+
+    def render_square(self, side: float) -> None:
+        print(f"Drawing a square of side {side} as vector")
+
+
+class RasterRenderer(Renderer):
+    def render_circle(self, radius: float) -> None:
+        print(f"Drawing a circle of radius {radius} as pixels")
+
+    def render_square(self, side: float) -> None:
+        print(f"Drawing a square of side {side} as pixels")
+
+
+# Abstraction
+class Shape(ABC):
+    def __init__(self, renderer: Renderer) -> None:
+        self._renderer = renderer
+
+    @abstractmethod
+    def draw(self) -> None:
+        pass
+
+    @abstractmethod
+    def resize(self, factor: float) -> None:
+        pass
+
+
+# Refined Abstractions
+class Circle(Shape):
+    def __init__(self, renderer: Renderer, radius: float) -> None:
+        super().__init__(renderer)
+        self._radius = radius
+
+    def draw(self) -> None:
+        self._renderer.render_circle(self._radius)
+
+    def resize(self, factor: float) -> None:
+        self._radius *= factor
+
+
+class Square(Shape):
+    def __init__(self, renderer: Renderer, side: float) -> None:
+        super().__init__(renderer)
+        self._side = side
+
+    def draw(self) -> None:
+        self._renderer.render_square(self._side)
+
+    def resize(self, factor: float) -> None:
+        self._side *= factor
+
+
+# Usage
+if __name__ == "__main__":
+    # Vector renderer
+    vector_renderer = VectorRenderer()
+    circle = Circle(vector_renderer, 5.0)
+    circle.draw()
+
+    square = Square(vector_renderer, 4.0)
+    square.draw()
+
+    # Raster renderer
+    raster_renderer = RasterRenderer()
+    circle2 = Circle(raster_renderer, 5.0)
+    circle2.draw()
+
+    square2 = Square(raster_renderer, 4.0)
+    square2.draw()
+
+    # Switch implementation at runtime
+    circle._renderer = raster_renderer
+    circle.draw()
+```
