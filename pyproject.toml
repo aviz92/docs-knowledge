@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docs-knowledge"
+version = "0.0.1"
+description = "A template repository for python development projects."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Avi Zaguri" },]
+keywords = ["development", "python", "Knowledge", "Documentation"]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Framework :: Pytest",
+    "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+    "custom-python-logger==2.0.11",
+    "pre-commit>=4.5.0",
+    "pydantic>=2.12.4",
+    "pytest>=9.0.1",
+    "python-base-toolkit==0.0.17",
+    "wheel>=0.45.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/aviz92/docs-knowledge"
+Repository = "https://github.com/aviz92/docs-knowledge"
+Issues = "https://github.com/aviz92/docs-knowledge/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+namespaces = false
