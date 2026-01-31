@@ -1,0 +1,143 @@
+---
+description: Builder pattern for constructing complex objects step by step.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Builder Pattern
+
+## Introduction
+
+The Builder pattern constructs complex objects step by step. It allows you to produce different types and
+representations of an object using the same construction code. This pattern is especially useful when an object has many
+optional parameters or requires complex initialization.
+
+## When to Use
+
+* **Many Optional Parameters**: When objects have many optional parameters (avoiding telescoping constructor
+  anti-pattern)
+* **Complex Construction**: When object construction is complex and involves multiple steps
+* **Different Representations**: When you need to create different representations of the same object
+* **Immutable Objects**: When building immutable objects with many fields
+* **Validation During Construction**: When you need to validate parameters before creating the object
+
+**Use Builder when:**
+
+- An object has 4+ constructor parameters
+- You want to make object construction more readable
+- You need to create objects with different configurations
+- Construction logic is complex and should be separated
+
+## How to Use
+
+1. **Create Builder Class**: Define a builder class with methods for setting each parameter
+2. **Fluent Interface**: Return `self` from setter methods to enable method chaining
+3. **Build Method**: Provide a `build()` method that creates and returns the final object
+4. **Validation**: Optionally validate parameters in the `build()` method
+5. **Optional Director**: Use a Director class if construction follows a specific sequence
+
+## Example
+
+```python
+from typing import Optional, List
+from dataclasses import dataclass
+
+
+@dataclass
+class DatabaseConnection:
+    host: str
+    port: int
+    database: str
+    username: str
+    password: str
+    timeout: int = 30
+    ssl: bool = False
+    pool_size: int = 10
+    max_retries: int = 3
+    connection_string: Optional[str] = None
+
+
+class DatabaseConnectionBuilder:
+    def __init__(self) -> None:
+        self._host: Optional[str] = None
+        self._port: Optional[int] = None
+        self._database: Optional[str] = None
+        self._username: Optional[str] = None
+        self._password: Optional[str] = None
+        self._timeout: int = 30
+        self._ssl: bool = False
+        self._pool_size: int = 10
+        self._max_retries: int = 3
+
+    def with_host(self, host: str) -> "DatabaseConnectionBuilder":
+        self._host = host
+        return self
+
+    def with_port(self, port: int) -> "DatabaseConnectionBuilder":
+        self._port = port
+        return self
+
+    def with_database(self, database: str) -> "DatabaseConnectionBuilder":
+        self._database = database
+        return self
+
+    def with_credentials(self, username: str, password: str) -> "DatabaseConnectionBuilder":
+        self._username = username
+        self._password = password
+        return self
+
+    def with_timeout(self, timeout: int) -> "DatabaseConnectionBuilder":
+        self._timeout = timeout
+        return self
+
+    def with_ssl(self, enabled: bool = True) -> "DatabaseConnectionBuilder":
+        self._ssl = enabled
+        return self
+
+    def with_pool_size(self, size: int) -> "DatabaseConnectionBuilder":
+        self._pool_size = size
+        return self
+
+    def with_max_retries(self, retries: int) -> "DatabaseConnectionBuilder":
+        self._max_retries = retries
+        return self
+
+    def build(self) -> DatabaseConnection:
+        if not all([self._host, self._port, self._database, self._username, self._password]):
+            raise ValueError("Missing required connection parameters")
+
+        connection_string = f"{self._host}:{self._port}/{self._database}"
+
+        return DatabaseConnection(
+            host=self._host,
+            port=self._port,
+            database=self._database,
+            username=self._username,
+            password=self._password,
+            timeout=self._timeout,
+            ssl=self._ssl,
+            pool_size=self._pool_size,
+            max_retries=self._max_retries,
+            connection_string=connection_string
+        )
+
+
+# Usage
+if __name__ == "__main__":
+    # Build connection with method chaining
+    connection = (
+        DatabaseConnectionBuilder()
+        .with_host("localhost")
+        .with_port(5432)
+        .with_database("mydb")
+        .with_credentials("user", "password")
+        .with_ssl(True)
+        .with_timeout(60)
+        .with_pool_size(20)
+        .build()
+    )
+
+    print(f"Connection: {connection.connection_string}")
+    print(f"SSL: {connection.ssl}")
+    print(f"Pool size: {connection.pool_size}")
+```
