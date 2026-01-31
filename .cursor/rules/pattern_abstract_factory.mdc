@@ -1,0 +1,115 @@
+---
+description: Abstract Factory pattern for creating families of related objects.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Abstract Factory Pattern
+
+## Introduction
+The Abstract Factory pattern provides an interface for creating families of related or dependent objects without specifying their concrete classes. It's useful when you need to ensure that created objects are compatible with each other.
+
+## When to Use
+* **Related Object Families**: When you need to create families of related objects that must work together
+* **Multiple Product Variants**: When you have multiple variants of products and need to ensure compatibility
+* **Platform Independence**: When you want to isolate concrete classes from clients
+* **Configuration-Driven**: When object creation depends on configuration or environment
+
+**Use Abstract Factory when:**
+- You need to ensure objects from different families are compatible
+- You want to switch between entire families of objects at runtime
+- You need to support multiple platforms or configurations
+- Object creation logic is complex and should be centralized
+
+---
+
+## How to Use
+1. **Define Abstract Factory Interface**: Create an abstract base class with methods for creating each product type
+2. **Create Concrete Factories**: Implement the factory for each product family
+3. **Define Product Interfaces**: Create abstract interfaces for each product type
+4. **Implement Concrete Products**: Create concrete product classes for each family
+5. **Use Factory**: Client code uses the factory interface, not concrete classes
+
+---
+
+## Example
+```python
+from abc import ABC, abstractmethod
+
+
+# step 1 - Abstract products
+class DBConnection(ABC):
+    @abstractmethod
+    def connect(self) -> None:
+        pass
+
+
+class QueryBuilder(ABC):
+    @abstractmethod
+    def select_user(self, user_id: int) -> str:
+        pass
+
+
+# step 2 - Concrete products – PostgreSQL
+class PostgresConnection(DBConnection):
+    def connect(self) -> None:
+        print("Connecting to PostgreSQL")
+
+
+class PostgresQueryBuilder(QueryBuilder):
+    def select_user(self, user_id: int) -> str:
+        return f'SELECT * FROM users WHERE id = {user_id}'
+
+
+# step 3 - Concrete products – MySQL
+class MySQLConnection(DBConnection):
+    def connect(self) -> None:
+        print("Connecting to MySQL")
+
+
+class MySQLQueryBuilder(QueryBuilder):
+    def select_user(self, user_id: int) -> str:
+        return f'SELECT * FROM `users` WHERE `id` = {user_id}'
+
+
+# step 4 - Abstract factory
+class DatabaseFactory(ABC):
+    @abstractmethod
+    def create_connection(self) -> DBConnection:
+        pass
+
+    @abstractmethod
+    def create_query_builder(self) -> QueryBuilder:
+        pass
+
+
+# step 5 - Concrete factories
+class PostgresFactory(DatabaseFactory):
+    def create_connection(self) -> DBConnection:
+        return PostgresConnection()
+
+    def create_query_builder(self) -> QueryBuilder:
+        return PostgresQueryBuilder()
+
+
+class MySQLFactory(DatabaseFactory):
+    def create_connection(self) -> DBConnection:
+        return MySQLConnection()
+
+    def create_query_builder(self) -> QueryBuilder:
+        return MySQLQueryBuilder()
+
+
+# step 6 - Client code
+def run_query(factory: DatabaseFactory, user_id: int) -> None:
+    conn = factory.create_connection()
+    qb = factory.create_query_builder()
+
+    conn.connect()
+    print(qb.select_user(user_id))
+
+
+if __name__ == '__main__':
+    run_query(PostgresFactory(), 42)
+    run_query(MySQLFactory(), 42)
+```
