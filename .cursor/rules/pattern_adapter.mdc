@@ -1,0 +1,106 @@
+---
+description: Adapter pattern for making incompatible interfaces work together.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Adapter Pattern
+
+## Introduction
+
+The Adapter pattern allows objects with incompatible interfaces to collaborate. It acts as a wrapper that translates
+calls from one interface to another, enabling classes to work together that otherwise couldn't.
+
+## When to Use
+
+* **Incompatible Interfaces**: When you need to use a class with an interface that doesn't match what you need
+* **Third-Party Integration**: When integrating third-party libraries with different interfaces
+* **Legacy Code**: When working with legacy code that can't be modified
+* **Interface Translation**: When you need to translate between different interface formats
+* **Reusability**: When you want to reuse existing classes that don't match your current interface
+
+**Use Adapter when:**
+
+- You need to use an existing class whose interface doesn't match what you need
+- You want to create a reusable class that works with unrelated classes
+- You need to integrate with third-party libraries
+- You want to decouple your code from specific implementations
+
+## How to Use
+
+1. **Identify Target Interface**: Define the interface your client code expects
+2. **Identify Adaptee**: Identify the class that needs to be adapted
+3. **Create Adapter Class**: Create a class that implements the target interface
+4. **Wrap Adaptee**: The adapter wraps an instance of the adaptee class
+5. **Translate Calls**: The adapter translates calls from the target interface to the adaptee's interface
+
+## Example
+
+```python
+from abc import ABC, abstractmethod
+
+
+# Target Interface (what client expects)
+class PaymentProcessor(ABC):
+    @abstractmethod
+    @abstractmethod
+    def process_payment(self, amount: float, currency: str) -> bool:
+        pass
+
+
+# Adaptee (existing class with incompatible interface)
+class LegacyPaymentSystem:
+    def pay(self, amount: float) -> dict[str, str]:
+        print(f"Legacy system processing payment: ${amount}")
+        return {"status": "success", "amount": str(amount)}
+
+
+# Adapter
+class LegacyPaymentAdapter(PaymentProcessor):
+    def __init__(self, legacy_system: LegacyPaymentSystem) -> None:
+        self._legacy_system = legacy_system
+
+    def process_payment(self, amount: float, currency: str) -> bool:
+        result = self._legacy_system.pay(amount)
+        return result.get("status") == "success"
+
+
+# Another Adaptee
+class StripePaymentAPI:
+    def charge(self, amount_cents: int, currency: str) -> dict[str, any]:
+        print(f"Stripe charging {amount_cents} cents in {currency}")
+        return {"success": True, "id": "ch_123"}
+
+
+# Adapter for Stripe
+class StripePaymentAdapter(PaymentProcessor):
+    def __init__(self, stripe_api: StripePaymentAPI) -> None:
+        self._stripe_api = stripe_api
+
+    def process_payment(self, amount: float, currency: str) -> bool:
+        amount_cents = int(amount * 100)
+        result = self._stripe_api.charge(amount_cents, currency)
+        return result.get("success", False)
+
+
+# Client Code
+def process_payments(processor: PaymentProcessor, amount: float, currency: str) -> None:
+    success = processor.process_payment(amount, currency)
+    if success:
+        print(f"Payment of {amount} {currency} processed successfully")
+    else:
+        print(f"Payment failed")
+
+
+# Usage
+if __name__ == "__main__":
+    # Use legacy system through adapter
+    legacy_system = LegacyPaymentSystem()
+    legacy_adapter = LegacyPaymentAdapter(legacy_system)
+    process_payments(legacy_adapter, 100.0, "USD")
+
+    # Use Stripe through adapter
+    stripe_api = StripePaymentAPI()
+    stripe_adapter = StripePaymentAdapter(stripe_api)
+    process_payments(stripe_adapter, 50.0, "EUR")
+```
