@@ -1,0 +1,84 @@
+---
+description: Context Manager pattern for managing resources with automatic cleanup.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Context Manager Pattern
+
+## Introduction
+
+The Context Manager pattern manages resources with automatic setup and teardown. In Python, this is implemented using
+the `with` statement, which ensures resources are properly acquired and released, even if exceptions occur.
+
+## When to Use
+
+* **Resource Management**: When you need guaranteed resource cleanup (files, database connections, locks)
+* **Exception Safety**: When you want to ensure cleanup happens even if exceptions occur
+* **Setup/Teardown**: When you need paired setup and teardown operations
+* **Transaction Management**: When managing transactions that must be committed or rolled back
+* **Temporary State**: When you need to temporarily change state and restore it
+
+**Use Context Managers when:**
+
+- You need to ensure resources are properly released
+- You want exception-safe resource handling
+- You have paired setup/teardown operations
+- You want cleaner code than try/finally blocks
+
+## How to Use
+
+1. **Implement Context Manager Protocol**: Create a class with `__enter__` and `__exit__` methods
+2. **Use `contextlib.contextmanager`**: Use the decorator for generator-based context managers
+3. **Use `contextlib.ExitStack`**: For managing multiple context managers
+4. **Use `with` Statement**: Use the `with` statement to acquire and release resources
+
+## Example
+
+```python
+from contextlib import contextmanager
+from typing import Generator
+import threading
+import time
+
+
+# Class-based Context Manager
+class FileManager:
+    def __init__(self, filename: str, mode: str = "r") -> None:
+        self.filename = filename
+        self.mode = mode
+        self.file = None
+
+    def __enter__(self) -> "FileManager":
+        self.file = open(self.filename, self.mode)
+        print(f"Opened file: {self.filename}")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        if self.file:
+            self.file.close()
+            print(f"Closed file: {self.filename}")
+        return False  # Don't suppress exceptions
+
+
+# Generator-based Context Manager
+@contextmanager
+def timer() -> Generator[None, None, None]:
+    start = time.time()
+    try:
+        yield
+    finally:
+        elapsed = time.time() - start
+        print(f"Elapsed time: {elapsed:.2f} seconds")
+
+
+# Usage
+if __name__ == "__main__":
+    # File management
+    with FileManager("example.txt", "w") as fm:
+        fm.file.write("Hello, World!")
+
+    # Timing
+    with timer():
+        time.sleep(1)
+```
