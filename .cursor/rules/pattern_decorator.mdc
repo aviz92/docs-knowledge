@@ -1,0 +1,78 @@
+---
+description: Decorator pattern for adding behavior to objects dynamically.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Decorator Pattern
+
+## Introduction
+
+The Decorator pattern allows you to attach new behaviors to objects by placing them inside wrapper objects that contain
+these behaviors. It provides a flexible alternative to subclassing for extending functionality, allowing you to add or
+remove responsibilities at runtime.
+
+## When to Use
+
+* **Dynamic Behavior**: When you need to add or remove responsibilities to objects at runtime
+* **Avoid Subclass Explosion**: When subclassing would lead to too many classes
+* **Composition Over Inheritance**: When you prefer composition over inheritance
+* **Multiple Combinations**: When you need to combine multiple behaviors in different ways
+* **Extensibility**: When you want to extend functionality without modifying existing code
+
+**Use Decorator when:**
+
+- You need to add responsibilities to objects dynamically
+- You want to avoid creating subclasses for every combination of features
+- You need to add or remove features at runtime
+- You want to keep the interface consistent while adding functionality
+
+## How to Use
+
+1. **Define Component Interface**: Create an interface for objects that can have responsibilities added
+2. **Create Concrete Component**: Implement the base component
+3. **Create Decorator Base**: Create an abstract decorator that implements the component interface
+4. **Create Concrete Decorators**: Implement specific decorators that add behaviors
+5. **Compose Decorators**: Stack decorators to combine multiple behaviors
+
+## Example
+
+```python
+import time
+import functools
+
+
+def timer_decorator(func):
+    """A decorator that prints the execution time of the function it wraps."""
+
+    @functools.wraps(func)  # This preserves the original function's metadata
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()  # Before behavior
+
+        result = func(*args, **kwargs)  # Call the original function
+
+        end_time = time.perf_counter()  # After behavior
+        duration = end_time - start_time
+        print(f"DEBUG: {func.__name__} took {duration:.4f} seconds")
+
+        return result
+
+    return wrapper
+
+
+@timer_decorator
+def heavy_computation():
+    """Simulates a long-running task."""
+    time.sleep(1.5)
+    return "Computation Complete"
+
+
+@timer_decorator
+def greet(name):
+    return f"Hello, {name}!"
+
+
+if __name__ == '__main__':
+    print(heavy_computation())
+    print(greet("Gemini"))
+```
