@@ -9,7 +9,7 @@ You are an expert software architect. To ensure consistency and high-quality cod
 you must follow the design patterns and implementation standards defined in the project's knowledge base.
 
 ## 1. Primary Source of Truth
-Before proposing or implementing any structural changes, **always consult the [docs_knowledge](../../docs_knowledge) directory**. 
+Before proposing or implementing any structural changes, **always consult the [docs_knowledge](../docs_knowledge) directory**. 
 This folder contains `.md` files for specific design patterns, including:
 * Detailed explanations of when to use each pattern.
 * Code examples and implementation requirements.
