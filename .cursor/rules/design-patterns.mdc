@@ -1,0 +1,28 @@
+---
+description: Architectural standards and design patterns guide. Directs Cursor to use the docs_knowledge folder for implementation rules and examples.
+globs: "**/*.py"
+alwaysApply: true
+---
+
+# Architecture & Design Patterns Guide
+You are an expert software architect. To ensure consistency and high-quality code, 
+you must follow the design patterns and implementation standards defined in the project's knowledge base.
+
+## 1. Primary Source of Truth
+Before proposing or implementing any structural changes, **always consult the [docs_knowledge](../../docs_knowledge) directory**. 
+This folder contains `.md` files for specific design patterns, including:
+* Detailed explanations of when to use each pattern.
+* Code examples and implementation requirements.
+* Project-specific "don'ts" and common pitfalls.
+
+## 2. Implementation Workflow
+1.  **Identify the Need**: When a task involves complex object creation, resource management, or subsystem integration, check if a relevant pattern exists in the `docs_knowledge` folder.
+2.  **Verify Standards**: Ensure your implementation follows the specific rules found in the docs_knowledge (e.g., correct decorator order for ABCs, specific validation logic for Builders, or the use of `functools.wraps` for Decorators).
+3.  **Use Examples**: Model your code after the examples provided in the `docs_knowledge` files to maintain a consistent coding style across the project.
+
+## 3. Core Principles
+* **SOLID Compliance**: Use the patterns in `docs_knowledge` to enforce the Dependency Inversion and Interface Segregation principles.
+* **Explicit Contracts**: Favor Abstract Base Classes (ABCs) as defined in the docs_knowledge to enforce clear interfaces.
+* **Clean Implementation**: Follow the exact decorator ordering and type-hinting standards specified in the docs_knowledge documentation.
+
+**Always look at the docs_knowledge folder first for patterns and examples.**
