@@ -1,0 +1,185 @@
+---
+description: Dependency Injection pattern for injecting dependencies rather than hard-coding them.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Dependency Injection Pattern
+
+## Introduction
+
+Dependency Injection is a design pattern where dependencies are provided to a class rather than the class creating them
+itself. This promotes loose coupling, testability, and makes code more flexible and maintainable.
+
+## When to Use
+
+* **Loose Coupling**: When you want to decouple classes from their dependencies
+* **Testability**: When you need to easily mock dependencies for testing
+* **Flexibility**: When you want to swap implementations at runtime
+* **SOLID Principles**: When following Dependency Inversion Principle
+* **Configuration**: When dependencies should be configurable
+
+**Use Dependency Injection when:**
+
+- You want to make code testable
+- You need to swap implementations easily
+- You want to reduce coupling between classes
+- You're building frameworks or libraries
+- Dependencies should be configurable
+
+## How to Use
+
+1. **Constructor Injection**: Pass dependencies through constructor
+2. **Setter Injection**: Provide setter methods for dependencies
+3. **Interface Injection**: Inject through interfaces/protocols
+4. **Dependency Container**: Use a container to manage dependencies
+5. **Type Hints**: Use type hints to make dependencies explicit
+
+## Example
+
+```python
+from abc import ABC, abstractmethod
+from typing import Optional
+
+
+# Dependency Interfaces
+class Database(ABC):
+    @abstractmethod
+    def save(self, data: dict) -> bool:
+        pass
+
+
+class Logger(ABC):
+    @abstractmethod
+    def log(self, message: str) -> None:
+        pass
+
+
+# Concrete Implementations
+class PostgreSQLDatabase(Database):
+    def __init__(self, connection_string: str) -> None:
+        self.connection_string = connection_string
+
+    def save(self, data: dict) -> bool:
+        print(f"Saving to PostgreSQL ({self.connection_string}): {data}")
+        return True
+
+
+class MySQLDatabase(Database):
+    def __init__(self, connection_string: str) -> None:
+        self.connection_string = connection_string
+
+    def save(self, data: dict) -> bool:
+        print(f"Saving to MySQL ({self.connection_string}): {data}")
+        return True
+
+
+class ConsoleLogger(Logger):
+    def log(self, message: str) -> None:
+        print(f"LOG: {message}")
+
+
+class FileLogger(Logger):
+    def __init__(self, filepath: str) -> None:
+        self.filepath = filepath
+
+    def log(self, message: str) -> None:
+        with open(self.filepath, "a") as f:
+            f.write(f"{message}\n")
+        print(f"Logged to {self.filepath}: {message}")
+
+
+# Service with Constructor Injection
+class UserService:
+    def __init__(self, database: Database, logger: Logger) -> None:
+        self._database = database
+        self._logger = logger
+
+    def create_user(self, username: str, email: str) -> bool:
+        self._logger.log(f"Creating user: {username}")
+        user_data = {"username": username, "email": email}
+        success = self._database.save(user_data)
+        if success:
+            self._logger.log(f"User {username} created successfully")
+        return success
+
+
+# Service with Setter Injection
+class OrderService:
+    def __init__(self) -> None:
+        self._database: Optional[Database] = None
+        self._logger: Optional[Logger] = None
+
+    def set_database(self, database: Database) -> None:
+        self._database = database
+
+    def set_logger(self, logger: Logger) -> None:
+        self._logger = logger
+
+    def create_order(self, order_data: dict) -> bool:
+        if not self._database or not self._logger:
+            raise ValueError("Dependencies not set")
+
+        self._logger.log(f"Creating order: {order_data}")
+        success = self._database.save(order_data)
+        if success:
+            self._logger.log("Order created successfully")
+        return success
+
+
+# Simple Dependency Container
+class Container:
+    def __init__(self) -> None:
+        self._services: dict[str, any] = {}
+        self._singletons: dict[str, any] = {}
+
+    def register(self, name: str, factory: callable, singleton: bool = False) -> None:
+        self._services[name] = {"factory": factory, "singleton": singleton}
+
+    def get(self, name: str) -> any:
+        if name not in self._services:
+            raise KeyError(f"Service '{name}' not found")
+
+        service_config = self._services[name]
+
+        if service_config["singleton"]:
+            if name not in self._singletons:
+                self._singletons[name] = service_config["factory"]()
+            return self._singletons[name]
+        else:
+            return service_config["factory"]()
+
+
+# Usage
+if __name__ == "__main__":
+    # Constructor injection
+    db = PostgreSQLDatabase("postgresql://localhost/mydb")
+    logger = ConsoleLogger()
+    user_service = UserService(db, logger)
+    user_service.create_user("alice", "alice@example.com")
+
+    # Swap implementations
+    mysql_db = MySQLDatabase("mysql://localhost/mydb")
+    file_logger = FileLogger("app.log")
+    user_service2 = UserService(mysql_db, file_logger)
+    user_service2.create_user("bob", "bob@example.com")
+
+    # Setter injection
+    order_service = OrderService()
+    order_service.set_database(db)
+    order_service.set_logger(logger)
+    order_service.create_order({"order_id": "ORD-001", "total": 100.0})
+
+    # Dependency container
+    container = Container()
+    container.register("database", lambda: PostgreSQLDatabase("postgresql://localhost/mydb"))
+    container.register("logger", lambda: ConsoleLogger())
+    container.register("user_service",
+                       lambda: UserService(
+                           container.get("database"),
+                           container.get("logger")
+                       ))
+
+    service = container.get("user_service")
+    service.create_user("charlie", "charlie@example.com")
+```
