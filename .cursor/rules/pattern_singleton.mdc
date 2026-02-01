@@ -1,0 +1,135 @@
+---
+description: Singleton pattern for ensuring a class has only one instance.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Singleton Pattern
+
+## Introduction
+
+The Singleton pattern ensures a class has only one instance and provides a global point of access to it. This pattern is
+useful when you need exactly one instance of a class to coordinate actions across the system.
+
+## When to Use
+
+* **Single Instance Required**: When you need exactly one instance of a class (database connections, loggers,
+  configuration)
+* **Global Access Point**: When you need a global access point to a resource
+* **Resource Management**: When managing shared resources that should not be duplicated
+* **Coordination**: When coordinating actions across the system requires a single point of control
+
+**Use Singleton when:**
+
+- You need exactly one instance of a class
+- The instance needs to be accessible globally
+- You want to control access to a shared resource
+- Lazy initialization is acceptable
+
+**Avoid Singleton when:**
+
+- You need multiple instances
+- You want to make code testable (singletons make testing harder)
+- You need dependency injection (singletons are hard to mock)
+
+## How to Use
+
+1. **Private Constructor**: Make the constructor private to prevent direct instantiation
+2. **Class Variable**: Store the single instance as a class variable
+3. **Static Access Method**: Provide a static method to access the instance
+4. **Lazy Initialization**: Create the instance only when first accessed
+5. **Thread Safety**: Ensure thread safety if used in multi-threaded environments
+
+## Example
+
+```python
+from typing import Optional
+import threading
+
+
+class DatabaseConnection:
+    _instance: Optional["DatabaseConnection"] = None
+    _lock = threading.Lock()
+
+    def __init__(self) -> None:
+        if DatabaseConnection._instance is not None:
+            raise RuntimeError("Use get_instance() to get the singleton instance")
+
+        self.connection_string: Optional[str] = None
+        self.is_connected: bool = False
+
+    @classmethod
+    def get_instance(cls) -> "DatabaseConnection":
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls.__new__(cls)
+                    cls._instance.__init__()
+        return cls._instance
+
+    def connect(self, connection_string: str) -> None:
+        if self.is_connected:
+            print("Already connected")
+            return
+
+        self.connection_string = connection_string
+        self.is_connected = True
+        print(f"Connected to: {connection_string}")
+
+    def disconnect(self) -> None:
+        if not self.is_connected:
+            print("Not connected")
+            return
+
+        self.is_connected = False
+        print("Disconnected from database")
+
+
+# Alternative: Using __new__ method
+class Logger:
+    _instance: Optional["Logger"] = None
+    _lock = threading.Lock()
+
+    def __new__(cls) -> "Logger":
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self) -> None:
+        if self._initialized:
+            return
+
+        self.logs: list[str] = []
+        self._initialized = True
+
+    def log(self, message: str) -> None:
+        self.logs.append(message)
+        print(f"LOG: {message}")
+
+    def get_logs(self) -> list[str]:
+        return self.logs.copy()
+
+
+# Usage
+if __name__ == "__main__":
+    # Database connection singleton
+    db1 = DatabaseConnection.get_instance()
+    db1.connect("postgresql://localhost/mydb")
+
+    db2 = DatabaseConnection.get_instance()
+    print(f"Same instance: {db1 is db2}")  # True
+    db2.disconnect()
+
+    # Logger singleton
+    logger1 = Logger()
+    logger1.log("First message")
+
+    logger2 = Logger()
+    logger2.log("Second message")
+
+    print(f"Same instance: {logger1 is logger2}")  # True
+    print(f"All logs: {logger1.get_logs()}")
+```

@@ -1,0 +1,177 @@
+---
+description: Strategy pattern for defining interchangeable algorithms.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Strategy Pattern
+
+## Introduction
+
+The Strategy pattern defines a family of algorithms, encapsulates each one, and makes them interchangeable. It lets the algorithm vary independently from clients that use it, enabling you to select algorithms at runtime.
+
+## When to Use
+
+* **Multiple Algorithms**: When you have multiple ways to perform a task and want to choose at runtime
+* **Avoid Conditionals**: When you want to replace conditional statements with polymorphism
+* **Algorithm Encapsulation**: When you want to encapsulate algorithms and make them interchangeable
+* **Runtime Selection**: When you need to select algorithms based on configuration or user input
+* **Extensibility**: When you want to easily add new algorithms without modifying existing code
+
+**Use Strategy when:**
+- You have multiple ways to perform a task
+- You want to avoid long if-else or switch statements
+- You need to select algorithms at runtime
+- You want to make algorithms easily extensible
+
+## How to Use
+
+1. **Define Strategy Interface**: Create an interface that defines the algorithm contract
+2. **Implement Strategies**: Create concrete classes that implement different algorithms
+3. **Create Context**: Create a context class that uses a strategy
+4. **Compose Strategy**: The context holds a reference to a strategy object
+5. **Delegate to Strategy**: The context delegates work to the strategy
+
+## Example
+
+```python
+from abc import ABC, abstractmethod
+from typing import List
+
+# Strategy Interface
+class SortingStrategy(ABC):
+    @abstractmethod
+    def sort(self, data: List[int]) -> List[int]:
+        pass
+
+# Concrete Strategies
+class BubbleSortStrategy(SortingStrategy):
+    def sort(self, data: List[int]) -> List[int]:
+        result = data.copy()
+        n = len(result)
+        for i in range(n):
+            for j in range(0, n - i - 1):
+                if result[j] > result[j + 1]:
+                    result[j], result[j + 1] = result[j + 1], result[j]
+        print("Sorted using Bubble Sort")
+        return result
+
+class QuickSortStrategy(SortingStrategy):
+    def sort(self, data: List[int]) -> List[int]:
+        result = data.copy()
+        self._quicksort(result, 0, len(result) - 1)
+        print("Sorted using Quick Sort")
+        return result
+    def _quicksort(self, arr: List[int], low: int, high: int) -> None:
+        if low < high:
+            pi = self._partition(arr, low, high)
+            self._quicksort(arr, low, pi - 1)
+            self._quicksort(arr, pi + 1, high)
+    def _partition(self, arr: List[int], low: int, high: int) -> int:
+        pivot = arr[high]
+        i = low - 1
+        for j in range(low, high):
+            if arr[j] <= pivot:
+                i += 1
+                arr[i], arr[j] = arr[j], arr[i]
+        arr[i + 1], arr[high] = arr[high], arr[i + 1]
+        return i + 1
+
+class MergeSortStrategy(SortingStrategy):
+    def sort(self, data: List[int]) -> List[int]:
+        result = data.copy()
+        self._mergesort(result, 0, len(result) - 1)
+        print("Sorted using Merge Sort")
+        return result
+    def _mergesort(self, arr: List[int], left: int, right: int) -> None:
+        if left < right:
+            mid = (left + right) // 2
+            self._mergesort(arr, left, mid)
+            self._mergesort(arr, mid + 1, right)
+            self._merge(arr, left, mid, right)
+    def _merge(self, arr: List[int], left: int, mid: int, right: int) -> None:
+        n1 = mid - left + 1
+        n2 = right - mid
+        
+        L = arr[left:left + n1]
+        R = arr[mid + 1:mid + 1 + n2]
+        
+        i = j = 0
+        k = left
+        
+        while i < n1 and j < n2:
+            if L[i] <= R[j]:
+                arr[k] = L[i]
+                i += 1
+            else:
+                arr[k] = R[j]
+                j += 1
+            k += 1
+        
+        while i < n1:
+            arr[k] = L[i]
+            i += 1
+            k += 1
+        
+        while j < n2:
+            arr[k] = R[j]
+            j += 1
+            k += 1
+
+# Context
+class Sorter:
+    def __init__(self, strategy: SortingStrategy) -> None:
+        self._strategy = strategy
+    def set_strategy(self, strategy: SortingStrategy) -> None:
+        self._strategy = strategy
+    def sort_data(self, data: List[int]) -> List[int]:
+        return self._strategy.sort(data)
+
+# Another Example: Payment Processing
+class PaymentStrategy(ABC):
+    @abstractmethod
+    def pay(self, amount: float) -> bool:
+        pass
+
+class CreditCardStrategy(PaymentStrategy):
+    def pay(self, amount: float) -> bool:
+        print(f"Processing ${amount} via credit card")
+        return True
+
+class PayPalStrategy(PaymentStrategy):
+    def pay(self, amount: float) -> bool:
+        print(f"Processing ${amount} via PayPal")
+        return True
+
+class PaymentProcessor:
+    def __init__(self, strategy: PaymentStrategy) -> None:
+        self._strategy = strategy
+    def process_payment(self, amount: float) -> bool:
+        return self._strategy.pay(amount)
+    def set_strategy(self, strategy: PaymentStrategy) -> None:
+        self._strategy = strategy
+
+# Usage
+if __name__ == "__main__":
+    # Sorting example
+    data = [64, 34, 25, 12, 22, 11, 90]
+    
+    sorter = Sorter(BubbleSortStrategy())
+    result = sorter.sort_data(data)
+    print(f"Result: {result}\n")
+    
+    sorter.set_strategy(QuickSortStrategy())
+    result = sorter.sort_data(data)
+    print(f"Result: {result}\n")
+    
+    sorter.set_strategy(MergeSortStrategy())
+    result = sorter.sort_data(data)
+    print(f"Result: {result}\n")
+    
+    # Payment example
+    processor = PaymentProcessor(CreditCardStrategy())
+    processor.process_payment(100.0)
+    
+    processor.set_strategy(PayPalStrategy())
+    processor.process_payment(50.0)
+```

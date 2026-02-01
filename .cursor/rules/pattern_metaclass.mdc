@@ -1,0 +1,148 @@
+---
+description: Metaclass pattern for customizing class creation and behavior.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Metaclass Pattern
+
+## Introduction
+
+The Metaclass pattern allows you to customize class creation and behavior. In Python, classes are objects, and metaclasses are the classes of classes. They let you intercept and modify class creation, enabling powerful features like automatic registration, validation, and method injection.
+
+## When to Use
+
+* **Class Registration**: When you need to automatically register classes (plugins, models)
+* **Validation**: When you want to validate class definitions at creation time
+* **Method Injection**: When you need to automatically add methods to classes
+* **ORM/Validation**: When building ORMs or validation frameworks
+* **API Generation**: When generating APIs or interfaces from class definitions
+
+**Use Metaclasses when:**
+- You need to modify class creation behavior
+- You want to automatically register classes
+- You need to validate class definitions
+- You're building frameworks that need to inspect/modify classes
+
+**Avoid Metaclasses when:**
+- Simple inheritance or composition would work
+- Decorators or descriptors can solve the problem
+- The complexity isn't justified
+
+## How to Use
+
+1. **Define Metaclass**: Create a class that inherits from `type`
+2. **Override `__new__`**: Customize class creation
+3. **Override `__init__`**: Customize class initialization
+4. **Use Metaclass**: Specify the metaclass when defining classes
+5. **Inherit Metaclass**: Classes can inherit metaclass behavior
+
+## Example
+
+```python
+from typing import Dict, Any
+from abc import ABC, ABCMeta, abstractmethod
+
+# Simple Metaclass for Registration
+class PluginRegistry(type):
+    
+    _plugins: Dict[str, type] = {}
+    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type:
+        new_class = super().__new__(cls, name, bases, namespace)
+        
+        # Register if it has a plugin_name attribute
+        if hasattr(new_class, "plugin_name"):
+            plugin_name = new_class.plugin_name
+            cls._plugins[plugin_name] = new_class
+            print(f"Registered plugin: {plugin_name}")
+        
+        return new_class
+    @classmethod
+    def get_plugin(cls, name: str) -> type:
+        return cls._plugins.get(name)
+
+# Using the metaclass
+class DataProcessor(metaclass=PluginRegistry):
+    plugin_name = "base"
+
+class CSVProcessor(DataProcessor):
+    plugin_name = "csv"
+    def process(self, data: str) -> str:
+        return f"Processed CSV: {data}"
+
+class JSONProcessor(DataProcessor):
+    plugin_name = "json"
+    def process(self, data: str) -> str:
+        return f"Processed JSON: {data}"
+
+# Validation Metaclass
+class ValidatedMeta(type):
+    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type:
+        # Check for required attributes
+        if "required_attr" in namespace:
+            required = namespace["required_attr"]
+            if not isinstance(required, str):
+                raise TypeError(f"{name}: required_attr must be a string")
+        
+        return super().__new__(cls, name, bases, namespace)
+
+class ValidatedClass(metaclass=ValidatedMeta):
+    required_attr = "value"
+
+# Singleton Metaclass
+class SingletonMeta(type):
+    
+    _instances: Dict[type, object] = {}
+    def __call__(cls, *args: Any, **kwargs: Any) -> object:
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class DatabaseConnection(metaclass=SingletonMeta):
+    def __init__(self) -> None:
+        self.connected = False
+    def connect(self) -> None:
+        self.connected = True
+        print("Connected to database")
+
+# Method Injection Metaclass
+class LoggedMeta(type):
+    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type:
+        # Wrap all methods with logging
+        for key, value in namespace.items():
+            if callable(value) and not key.startswith("__"):
+                namespace[key] = cls._add_logging(value, name)
+        
+        return super().__new__(cls, name, bases, namespace)
+    @staticmethod
+    def _add_logging(func: callable, class_name: str) -> callable:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            print(f"[{class_name}] Calling {func.__name__}")
+            result = func(*args, **kwargs)
+            print(f"[{class_name}] {func.__name__} completed")
+            return result
+        return wrapper
+
+class Calculator(metaclass=LoggedMeta):
+    def add(self, a: int, b: int) -> int:
+        return a + b
+    def multiply(self, a: int, b: int) -> int:
+        return a * b
+
+# Usage
+if __name__ == "__main__":
+    # Plugin registry
+    csv_plugin = PluginRegistry.get_plugin("csv")
+    processor = csv_plugin()
+    print(processor.process("data"))
+    
+    # Singleton
+    db1 = DatabaseConnection()
+    db2 = DatabaseConnection()
+    print(f"Same instance: {db1 is db2}")
+    
+    # Logged methods
+    calc = Calculator()
+    result = calc.add(2, 3)
+    print(f"Result: {result}")
+```

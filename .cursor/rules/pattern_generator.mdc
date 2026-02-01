@@ -1,0 +1,149 @@
+---
+description: Generator pattern for lazy evaluation and memory-efficient iteration.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Generator Pattern
+
+## Introduction
+
+The Generator pattern uses Python's `yield` keyword to create iterators that generate values on-demand. Generators provide lazy evaluation, memory efficiency, and enable processing of large datasets without loading everything into memory.
+
+## When to Use
+
+* **Large Datasets**: When processing large datasets that don't fit in memory
+* **Lazy Evaluation**: When you want to compute values only when needed
+* **Memory Efficiency**: When you need to minimize memory usage
+* **Infinite Sequences**: When generating infinite or very long sequences
+* **Pipeline Processing**: When building data processing pipelines
+
+**Use Generators when:**
+- You need to process large amounts of data
+- Memory usage is a concern
+- You want lazy evaluation
+- You need to create iterators easily
+- You're building data processing pipelines
+
+## How to Use
+
+1. **Use `yield` Keyword**: Replace `return` with `yield` in functions
+2. **Generator Functions**: Functions with `yield` automatically become generators
+3. **Generator Expressions**: Use `(x for x in iterable)` for simple generators
+4. **Iteration**: Use `for` loops or `next()` to consume generators
+5. **Pipeline**: Chain generators together for data processing pipelines
+
+## Example
+
+```python
+from typing import Iterator, Generator
+import os
+
+# Simple Generator
+def count_up_to(max_count: int) -> Generator[int, None, None]:
+    count = 1
+    while count <= max_count:
+        yield count
+        count += 1
+
+# Infinite Generator
+def fibonacci() -> Generator[int, None, None]:
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+
+# File Processing Generator
+def read_large_file(filepath: str) -> Generator[str, None, None]:
+    with open(filepath, "r") as f:
+        for line in f:
+            yield line.strip()
+
+# Data Processing Pipeline
+def filter_even(numbers: Iterator[int]) -> Generator[int, None, None]:
+    for num in numbers:
+        if num % 2 == 0:
+            yield num
+
+def square(numbers: Iterator[int]) -> Generator[int, None, None]:
+    for num in numbers:
+        yield num ** 2
+
+# Generator Expression
+def process_data(data: list[int]) -> Generator[int, None, None]:
+    # Generator expression for memory efficiency
+    return (x * 2 for x in data if x > 0)
+
+# Chunk Processing Generator
+def chunk_iterator(data: Iterator[any], chunk_size: int) -> Generator[list[any], None, None]:
+    chunk = []
+    for item in data:
+        chunk.append(item)
+        if len(chunk) >= chunk_size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
+
+# Coroutine Generator (Two-way Communication)
+def accumulator() -> Generator[int, int, None]:
+    total = 0
+    while True:
+        value = yield total
+        if value is None:
+            break
+        total += value
+
+# Generator for Pagination
+def paginate(items: list[any], page_size: int) -> Generator[list[any], None, None]:
+    for i in range(0, len(items), page_size):
+        yield items[i:i + page_size]
+
+# Usage
+if __name__ == "__main__":
+    # Simple generator
+    print("Counting to 5:")
+    for num in count_up_to(5):
+        print(num)
+    
+    # Infinite generator (with limit)
+    print("\nFirst 10 Fibonacci numbers:")
+    fib = fibonacci()
+    for _ in range(10):
+        print(next(fib))
+    
+    # Data processing pipeline
+    print("\nProcessing pipeline:")
+    numbers = range(1, 11)
+    even_numbers = filter_even(numbers)
+    squared = square(even_numbers)
+    for result in squared:
+        print(result)
+    
+    # Generator expression
+    print("\nGenerator expression:")
+    data = [1, 2, 3, 4, 5, -1, -2]
+    processed = process_data(data)
+    for value in processed:
+        print(value)
+    
+    # Chunk processing
+    print("\nChunk processing:")
+    large_data = range(1, 11)
+    for chunk in chunk_iterator(iter(large_data), 3):
+        print(f"Chunk: {chunk}")
+    
+    # Coroutine generator
+    print("\nAccumulator:")
+    acc = accumulator()
+    next(acc)  # Prime the generator
+    print(acc.send(10))
+    print(acc.send(20))
+    print(acc.send(30))
+    
+    # Pagination
+    print("\nPagination:")
+    items = list(range(1, 11))
+    for page in paginate(items, 3):
+        print(f"Page: {page}")
+```

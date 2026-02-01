@@ -1,0 +1,201 @@
+---
+description: Retry pattern for automatically retrying failed operations with backoff.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Retry Pattern
+
+## Introduction
+
+The Retry pattern automatically retries failed operations with configurable backoff strategies. It's essential for handling transient failures in distributed systems, network operations, and unreliable services.
+
+## When to Use
+
+* **Transient Failures**: When operations may fail temporarily but succeed on retry
+* **Network Operations**: When dealing with network requests that may timeout
+* **External Services**: When calling external services that may be temporarily unavailable
+* **Database Operations**: When database connections may fail temporarily
+* **Rate Limiting**: When dealing with rate-limited APIs
+
+**Use Retry when:**
+- Operations can fail due to transient issues (network, timeouts, temporary unavailability)
+- You want to improve system resilience
+- You need to handle intermittent failures gracefully
+- You're working with external services or APIs
+
+## How to Use
+
+1. **Define Retry Strategy**: Choose retry count, backoff strategy, and conditions
+2. **Identify Retryable Exceptions**: Determine which exceptions should trigger retries
+3. **Implement Backoff**: Use exponential, linear, or custom backoff strategies
+4. **Add Jitter**: Add randomness to prevent thundering herd problem
+5. **Log Retries**: Log retry attempts for debugging and monitoring
+
+## Example
+
+```python
+from typing import Callable, Type, Tuple, List, Optional
+from functools import wraps
+import time
+import random
+from enum import Enum
+
+class BackoffStrategy(Enum):
+    FIXED = "fixed"
+    LINEAR = "linear"
+    EXPONENTIAL = "exponential"
+
+class RetryConfig:
+    def __init__(
+        self,
+        max_attempts: int = 3,
+        initial_delay: float = 1.0,
+        max_delay: float = 60.0,
+        backoff_strategy: BackoffStrategy = BackoffStrategy.EXPONENTIAL,
+        jitter: bool = True,
+        retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,)
+    ) -> None:
+        self.max_attempts = max_attempts
+        self.initial_delay = initial_delay
+        self.max_delay = max_delay
+        self.backoff_strategy = backoff_strategy
+        self.jitter = jitter
+        self.retryable_exceptions = retryable_exceptions
+
+class RetryHandler:
+    def __init__(self, config: RetryConfig) -> None:
+        self.config = config
+    def calculate_delay(self, attempt: int) -> float:
+        if self.config.backoff_strategy == BackoffStrategy.FIXED:
+            delay = self.config.initial_delay
+        elif self.config.backoff_strategy == BackoffStrategy.LINEAR:
+            delay = self.config.initial_delay * (attempt + 1)
+        else:  # EXPONENTIAL
+            delay = self.config.initial_delay * (2 ** attempt)
+        
+        # Apply max delay
+        delay = min(delay, self.config.max_delay)
+        
+        # Add jitter
+        if self.config.jitter:
+            jitter_amount = delay * 0.1  # 10% jitter
+            delay += random.uniform(-jitter_amount, jitter_amount)
+            delay = max(0, delay)  # Ensure non-negative
+        
+        return delay
+    def should_retry(self, exception: Exception) -> bool:
+        return isinstance(exception, self.config.retryable_exceptions)
+    def execute(self, func: Callable, *args: any, **kwargs: any) -> any:
+        last_exception = None
+        
+        for attempt in range(self.config.max_attempts):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                last_exception = e
+                
+                if not self.should_retry(e):
+                    raise
+                
+                if attempt < self.config.max_attempts - 1:
+                    delay = self.calculate_delay(attempt)
+                    print(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay:.2f}s...")
+                    time.sleep(delay)
+                else:
+                    print(f"All {self.config.max_attempts} attempts failed")
+        
+        raise last_exception
+
+# Decorator for Retry
+def retry(
+    max_attempts: int = 3,
+    initial_delay: float = 1.0,
+    max_delay: float = 60.0,
+    backoff_strategy: BackoffStrategy = BackoffStrategy.EXPONENTIAL,
+    jitter: bool = True,
+    retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,)
+):
+    config = RetryConfig(
+        max_attempts=max_attempts,
+        initial_delay=initial_delay,
+        max_delay=max_delay,
+        backoff_strategy=backoff_strategy,
+        jitter=jitter,
+        retryable_exceptions=retryable_exceptions
+    )
+    handler = RetryHandler(config)
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: any, **kwargs: any) -> any:
+            return handler.execute(func, *args, **kwargs)
+        return wrapper
+    return decorator
+
+# Example Usage
+class NetworkError(Exception):
+        pass
+
+class TimeoutError(Exception):
+        pass
+
+def unreliable_api_call() -> str:
+    import random
+    if random.random() < 0.7:
+        raise NetworkError("Network connection failed")
+    return "Success"
+
+@retry(
+    max_attempts=5,
+    initial_delay=1.0,
+    backoff_strategy=BackoffStrategy.EXPONENTIAL,
+    retryable_exceptions=(NetworkError, TimeoutError)
+)
+def fetch_data() -> str:
+    return unreliable_api_call()
+
+# Context Manager for Retry
+class RetryContext:
+    def __init__(self, config: RetryConfig) -> None:
+        self.config = config
+        self.handler = RetryHandler(config)
+        self.attempts: List[Exception] = []
+    def __enter__(self) -> "RetryContext":
+        return self
+    def __exit__(self, exc_type: Optional[Type[Exception]], 
+                 exc_val: Optional[Exception], exc_tb: any) -> bool:
+        if exc_type and self.handler.should_retry(exc_val):
+            return True  # Suppress and retry
+        return False  # Propagate
+    def execute(self, func: Callable, *args: any, **kwargs: any) -> any:
+        return self.handler.execute(func, *args, **kwargs)
+
+# Usage
+if __name__ == "__main__":
+    # Using decorator
+    try:
+        result = fetch_data()
+        print(f"Result: {result}")
+    except NetworkError as e:
+        print(f"Failed after retries: {e}")
+    
+    # Using RetryHandler directly
+    config = RetryConfig(
+        max_attempts=3,
+        initial_delay=0.5,
+        backoff_strategy=BackoffStrategy.LINEAR
+    )
+    handler = RetryHandler(config)
+    
+    try:
+        result = handler.execute(unreliable_api_call)
+        print(f"Result: {result}")
+    except NetworkError as e:
+        print(f"Failed: {e}")
+    
+    # Using context manager
+    retry_config = RetryConfig(max_attempts=3, initial_delay=1.0)
+    with RetryContext(retry_config) as retry_ctx:
+        result = retry_ctx.execute(unreliable_api_call)
+        print(f"Result: {result}")
+```

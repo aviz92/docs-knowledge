@@ -1,0 +1,188 @@
+---
+description: Function decorator pattern for adding behavior to functions.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Function Decorator Pattern
+
+## Introduction
+
+The Function Decorator pattern uses Python's `@decorator` syntax to add behavior to functions without modifying them. Decorators are a powerful way to add cross-cutting concerns like logging, caching, validation, and timing to functions.
+
+## When to Use
+
+* **Cross-Cutting Concerns**: When you need to add behavior that applies to multiple functions (logging, timing, caching)
+* **Function Wrapping**: When you want to wrap functions with additional behavior
+* **DRY Principle**: When you want to avoid duplicating code across multiple functions
+* **Separation of Concerns**: When you want to separate business logic from infrastructure concerns
+* **Aspect-Oriented Programming**: When implementing AOP-style functionality
+
+**Use Function Decorators when:**
+- You need to add the same behavior to multiple functions
+- You want to modify function behavior without changing the function itself
+- You need to add cross-cutting concerns
+- You want to keep functions focused on their core logic
+
+## How to Use
+
+1. **Define Decorator Function**: Create a function that takes a function as input
+2. **Wrap Function**: Return a wrapper function that adds behavior
+3. **Use `@decorator` Syntax**: Apply decorator using `@decorator_name`
+4. **Preserve Metadata**: Use `functools.wraps` to preserve function metadata
+5. **Support Parameters**: Create decorators that accept parameters using nested functions
+
+## Example
+
+```python
+from functools import wraps
+from typing import Callable, Any
+import time
+import logging
+
+# Simple Decorator
+def log_calls(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        print(f"Calling {func.__name__} with args={args}, kwargs={kwargs}")
+        result = func(*args, **kwargs)
+        print(f"{func.__name__} returned {result}")
+        return result
+    return wrapper
+
+# Parameterized Decorator
+def retry(max_attempts: int = 3, delay: float = 1.0):
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception = None
+            for attempt in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    if attempt < max_attempts - 1:
+                        print(f"Attempt {attempt + 1} failed: {e}. Retrying...")
+                        time.sleep(delay)
+                    else:
+                        print(f"All {max_attempts} attempts failed")
+            raise last_exception
+        return wrapper
+    return decorator
+
+# Timing Decorator
+def timing(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        start = time.time()
+        result = func(*args, **kwargs)
+        elapsed = time.time() - start
+        print(f"{func.__name__} took {elapsed:.4f} seconds")
+        return result
+    return wrapper
+
+# Cache Decorator
+def cache(func: Callable) -> Callable:
+    cache_dict: dict = {}
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        # Create cache key from arguments
+        key = str(args) + str(sorted(kwargs.items()))
+        
+        if key in cache_dict:
+            print(f"Cache hit for {func.__name__}")
+            return cache_dict[key]
+        
+        print(f"Cache miss for {func.__name__}")
+        result = func(*args, **kwargs)
+        cache_dict[key] = result
+        return result
+    
+    return wrapper
+
+# Validation Decorator
+def validate_types(**expected_types: type):
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Get function parameter names
+            import inspect
+            sig = inspect.signature(func)
+            param_names = list(sig.parameters.keys())
+            
+            # Validate positional arguments
+            for i, arg in enumerate(args):
+                if i < len(param_names):
+                    param_name = param_names[i]
+                    if param_name in expected_types:
+                        expected_type = expected_types[param_name]
+                        if not isinstance(arg, expected_type):
+                            raise TypeError(
+                                f"{param_name} must be {expected_type.__name__}, "
+                                f"got {type(arg).__name__}"
+                            )
+            
+            # Validate keyword arguments
+            for param_name, arg_value in kwargs.items():
+                if param_name in expected_types:
+                    expected_type = expected_types[param_name]
+                    if not isinstance(arg_value, expected_type):
+                        raise TypeError(
+                            f"{param_name} must be {expected_type.__name__}, "
+                            f"got {type(arg_value).__name__}"
+                        )
+            
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# Usage
+if __name__ == "__main__":
+    # Simple decorator
+    @log_calls
+    def add(a: int, b: int) -> int:
+        return a + b
+    
+    result = add(2, 3)
+    
+    # Timing decorator
+    @timing
+    def slow_function() -> None:
+        time.sleep(0.1)
+    
+    slow_function()
+    
+    # Retry decorator
+    @retry(max_attempts=3, delay=0.5)
+    def unreliable_function() -> str:
+        import random
+        if random.random() < 0.7:
+            raise ValueError("Random failure")
+        return "Success"
+    
+    try:
+        result = unreliable_function()
+        print(f"Result: {result}")
+    except ValueError as e:
+        print(f"Failed: {e}")
+    
+    # Cache decorator
+    @cache
+    def expensive_computation(n: int) -> int:
+        time.sleep(0.1)  # Simulate expensive operation
+        return n * 2
+    
+    print(expensive_computation(5))
+    print(expensive_computation(5))  # Cache hit
+    
+    # Validation decorator
+    @validate_types(x=int, y=int)
+    def multiply(x: int, y: int) -> int:
+        return x * y
+    
+    print(multiply(3, 4))
+    try:
+        multiply(3, "4")  # Should raise TypeError
+    except TypeError as e:
+        print(f"Validation error: {e}")
+```

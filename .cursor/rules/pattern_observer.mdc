@@ -1,0 +1,135 @@
+---
+description: Observer pattern for notifying multiple objects about state changes.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Observer Pattern
+
+## Introduction
+
+The Observer pattern defines a one-to-many dependency between objects so that when one object changes state, all its dependents are notified and updated automatically. It's useful for implementing event handling systems and maintaining consistency between related objects.
+
+## When to Use
+
+* **State Changes**: When changes to one object require changing other objects, and you don't know how many
+* **Event Handling**: When you need to implement event-driven architectures
+* **Loose Coupling**: When you want to reduce coupling between subject and observers
+* **Broadcast Communication**: When you need to notify multiple objects about events
+* **Model-View Separation**: When separating business logic from presentation
+
+**Use Observer when:**
+- Changes to one object require updating multiple dependent objects
+- You want to decouple the subject from its observers
+- You need to implement event-driven systems
+- You want to maintain consistency between related objects
+
+## How to Use
+
+1. **Define Subject Interface**: Create an interface for objects that can be observed
+2. **Define Observer Interface**: Create an interface for objects that observe
+3. **Implement Subject**: Create concrete subject that maintains observer list
+4. **Implement Observers**: Create concrete observers that react to notifications
+5. **Attach/Detach**: Allow observers to subscribe and unsubscribe
+6. **Notify**: Subject notifies all observers when state changes
+
+## Example
+
+```python
+from abc import ABC, abstractmethod
+from typing import List
+from dataclasses import dataclass
+
+# Observer Interface
+class Observer(ABC):
+    @abstractmethod
+    def update(self, event: str, data: dict) -> None:
+        pass
+
+# Subject Interface
+class Subject(ABC):
+    @abstractmethod
+    def attach(self, observer: Observer) -> None:
+        pass
+    @abstractmethod
+    def detach(self, observer: Observer) -> None:
+        pass
+    @abstractmethod
+    def notify(self, event: str, data: dict) -> None:
+        pass
+
+# Concrete Subject
+class EventManager(Subject):
+    def __init__(self) -> None:
+        self._observers: List[Observer] = []
+    def attach(self, observer: Observer) -> None:
+        if observer not in self._observers:
+            self._observers.append(observer)
+    def detach(self, observer: Observer) -> None:
+        if observer in self._observers:
+            self._observers.remove(observer)
+    def notify(self, event: str, data: dict) -> None:
+        for observer in self._observers:
+            observer.update(event, data)
+
+# Concrete Observers
+class EmailNotifier(Observer):
+    def __init__(self, email: str) -> None:
+        self.email = email
+    def update(self, event: str, data: dict) -> None:
+        print(f"Email to {self.email}: {event} - {data}")
+
+class SMSNotifier(Observer):
+    def __init__(self, phone: str) -> None:
+        self.phone = phone
+    def update(self, event: str, data: dict) -> None:
+        print(f"SMS to {self.phone}: {event} - {data}")
+
+class LogNotifier(Observer):
+    def __init__(self, log_file: str) -> None:
+        self.log_file = log_file
+    def update(self, event: str, data: dict) -> None:
+        print(f"Log to {self.log_file}: {event} - {data}")
+
+# Usage Example: User Management System
+class UserService:
+    def __init__(self, event_manager: EventManager) -> None:
+        self._event_manager = event_manager
+    def create_user(self, username: str, email: str) -> dict:
+        user_data = {"username": username, "email": email, "id": 1}
+        self._event_manager.notify("user_created", user_data)
+        return user_data
+    def update_user(self, user_id: int, data: dict) -> dict:
+        user_data = {"id": user_id, **data}
+        self._event_manager.notify("user_updated", user_data)
+        return user_data
+    def delete_user(self, user_id: int) -> None:
+        self._event_manager.notify("user_deleted", {"id": user_id})
+
+# Usage
+if __name__ == "__main__":
+    # Create event manager
+    event_manager = EventManager()
+    
+    # Create observers
+    email_notifier = EmailNotifier("admin@example.com")
+    sms_notifier = SMSNotifier("+1234567890")
+    log_notifier = LogNotifier("app.log")
+    
+    # Attach observers
+    event_manager.attach(email_notifier)
+    event_manager.attach(sms_notifier)
+    event_manager.attach(log_notifier)
+    
+    # Create user service
+    user_service = UserService(event_manager)
+    
+    # Operations that trigger notifications
+    user_service.create_user("alice", "alice@example.com")
+    user_service.update_user(1, {"email": "alice.new@example.com"})
+    
+    # Detach an observer
+    event_manager.detach(sms_notifier)
+    
+    user_service.delete_user(1)
+```

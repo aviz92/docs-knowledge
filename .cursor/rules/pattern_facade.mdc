@@ -1,0 +1,181 @@
+---
+description: Facade pattern for providing a simplified interface to a complex subsystem.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Facade Pattern
+
+## Introduction
+
+The Facade pattern provides a simplified interface to a complex subsystem. It defines a higher-level interface that
+makes the subsystem easier to use by hiding its complexity and providing a single entry point.
+
+## When to Use
+
+* **Complex Subsystem**: When you have a complex subsystem with many classes
+* **Simplified Interface**: When you want to provide a simple interface to complex functionality
+* **Decoupling**: When you want to decouple client code from subsystem classes
+* **Layer Abstraction**: When you want to create a layer between clients and subsystem
+* **Legacy Code**: When working with legacy code that's difficult to use directly
+
+**Use Facade when:**
+
+- You want to provide a simple interface to a complex subsystem
+- You need to decouple clients from subsystem implementation
+- You want to reduce dependencies between clients and subsystem classes
+- You need to create a unified interface for multiple subsystems
+
+## How to Use
+
+1. **Identify Subsystem**: Identify the complex subsystem that needs simplification
+2. **Create Facade Class**: Create a facade class that provides a simple interface
+3. **Delegate to Subsystem**: The facade delegates client requests to appropriate subsystem objects
+4. **Hide Complexity**: The facade manages the complexity of subsystem interactions
+5. **Single Entry Point**: Clients interact only with the facade
+
+## Example
+
+```python
+from typing import Optional
+
+
+# Complex Subsystem Classes
+class CPU:
+    def freeze(self) -> None:
+        print("CPU: Freezing...")
+
+    def jump(self, position: int) -> None:
+        print(f"CPU: Jumping to position {position}")
+
+    def execute(self) -> None:
+        print("CPU: Executing...")
+
+
+class Memory:
+    def load(self, position: int, data: str) -> None:
+        print(f"Memory: Loading data '{data}' at position {position}")
+
+
+class HardDrive:
+    def read(self, lba: int, size: int) -> str:
+        data = f"Data from LBA {lba}"
+        print(f"HardDrive: Reading {size} bytes from LBA {lba}")
+        return data
+
+
+# Facade
+class Computer:
+    def __init__(self) -> None:
+        self._cpu = CPU()
+        self._memory = Memory()
+        self._hard_drive = HardDrive()
+
+    def start_computer(self) -> None:
+        print("Starting computer...")
+        self._cpu.freeze()
+        data = self._hard_drive.read(0, 1024)
+        self._memory.load(0, data)
+        self._cpu.jump(0)
+        self._cpu.execute()
+        print("Computer started successfully")
+
+
+# Another Example: API Facade
+class PaymentGateway:
+    def authenticate(self, api_key: str) -> bool:
+        print(f"PaymentGateway: Authenticating with API key")
+        return True
+
+    def validate_card(self, card_number: str) -> bool:
+        print(f"PaymentGateway: Validating card {card_number[:4]}****")
+        return True
+
+    def process_payment(self, amount: float, card_number: str) -> dict[str, any]:
+        print(f"PaymentGateway: Processing payment of ${amount}")
+        return {"success": True, "transaction_id": "txn_123"}
+
+
+class InventoryService:
+    def check_stock(self, product_id: str) -> bool:
+        print(f"InventoryService: Checking stock for {product_id}")
+        return True
+
+    def reserve_item(self, product_id: str, quantity: int) -> bool:
+        print(f"InventoryService: Reserving {quantity} of {product_id}")
+        return True
+
+
+class ShippingService:
+    def calculate_shipping(self, address: str) -> float:
+        print(f"ShippingService: Calculating shipping to {address}")
+        return 10.0
+
+    def schedule_delivery(self, address: str, items: list[str]) -> str:
+        print(f"ShippingService: Scheduling delivery to {address}")
+        return "TRACK123"
+
+
+# E-commerce Facade
+class ECommerceFacade:
+    def __init__(self, api_key: str) -> None:
+        self._payment = PaymentGateway()
+        self._inventory = InventoryService()
+        self._shipping = ShippingService()
+        self._payment.authenticate(api_key)
+
+    def purchase(self, product_id: str, quantity: int, card_number: str,
+                 shipping_address: str) -> dict[str, any]:
+        print("Processing purchase...")
+
+        # Check inventory
+        if not self._inventory.check_stock(product_id):
+            return {"success": False, "error": "Out of stock"}
+
+        # Reserve items
+        if not self._inventory.reserve_item(product_id, quantity):
+            return {"success": False, "error": "Could not reserve items"}
+
+        # Validate card
+        if not self._payment.validate_card(card_number):
+            return {"success": False, "error": "Invalid card"}
+
+        # Calculate total (simplified)
+        shipping_cost = self._shipping.calculate_shipping(shipping_address)
+        total = 100.0 * quantity + shipping_cost  # Simplified pricing
+
+        # Process payment
+        payment_result = self._payment.process_payment(total, card_number)
+        if not payment_result.get("success"):
+            return {"success": False, "error": "Payment failed"}
+
+        # Schedule delivery
+        tracking = self._shipping.schedule_delivery(
+            shipping_address,
+            [product_id] * quantity
+        )
+
+        return {
+            "success": True,
+            "transaction_id": payment_result["transaction_id"],
+            "tracking_number": tracking,
+            "total": total
+        }
+
+
+# Usage
+if __name__ == "__main__":
+    # Computer facade
+    computer = Computer()
+    computer.start_computer()
+
+    # E-commerce facade
+    ecommerce = ECommerceFacade("api_key_123")
+    result = ecommerce.purchase(
+        product_id="PROD123",
+        quantity=2,
+        card_number="4111111111111111",
+        shipping_address="123 Main St"
+    )
+    print(f"Purchase result: {result}")
+```

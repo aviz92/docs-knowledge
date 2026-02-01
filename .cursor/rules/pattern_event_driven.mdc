@@ -1,0 +1,236 @@
+---
+description: Event-Driven Architecture pattern for loose coupling and asynchronous communication.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Event-Driven Architecture Pattern
+
+## Introduction
+
+Event-Driven Architecture is a pattern where components communicate by producing and consuming events. This creates
+loose coupling, enables asynchronous processing, and makes systems more scalable and responsive.
+
+## When to Use
+
+* **Loose Coupling**: When you want to decouple components
+* **Asynchronous Processing**: When you need asynchronous, non-blocking operations
+* **Scalability**: When you need to scale components independently
+* **Real-Time Systems**: When building real-time or reactive systems
+* **Microservices**: When building microservices that need to communicate
+
+**Use Event-Driven Architecture when:**
+
+- You need loose coupling between components
+- You want asynchronous processing
+- You need to scale components independently
+- You're building reactive or real-time systems
+- Multiple components need to react to the same events
+
+## How to Use
+
+1. **Define Events**: Create event classes or data structures
+2. **Create Event Bus**: Implement an event bus or message broker
+3. **Publish Events**: Components publish events when something happens
+4. **Subscribe to Events**: Components subscribe to events they care about
+5. **Handle Events**: Event handlers process events asynchronously
+
+## Example
+
+```python
+from abc import ABC, abstractmethod
+from typing import Dict, List, Callable, Any
+from dataclasses import dataclass
+from datetime import datetime
+import threading
+from queue import Queue
+
+
+# Event Definitions
+@dataclass
+class Event:
+    event_type: str
+    timestamp: datetime
+    data: Dict[str, Any]
+
+
+@dataclass
+class UserCreatedEvent(Event):
+    def __init__(self, user_id: int, username: str, email: str):
+        super().__init__(
+            event_type="user_created",
+            timestamp=datetime.now(),
+            data={"user_id": user_id, "username": username, "email": email}
+        )
+
+
+@dataclass
+class OrderPlacedEvent(Event):
+    def __init__(self, order_id: str, user_id: int, total: float):
+        super().__init__(
+            event_type="order_placed",
+            timestamp=datetime.now(),
+            data={"order_id": order_id, "user_id": user_id, "total": total}
+        )
+
+
+@dataclass
+class PaymentProcessedEvent(Event):
+    def __init__(self, payment_id: str, order_id: str, amount: float):
+        super().__init__(
+            event_type="payment_processed",
+            timestamp=datetime.now(),
+            data={"payment_id": payment_id, "order_id": order_id, "amount": amount}
+        )
+
+
+# Event Bus
+class EventBus:
+    def __init__(self) -> None:
+        self._subscribers: Dict[str, List[Callable]] = {}
+        self._event_queue: Queue = Queue()
+        self._running = False
+        self._thread: threading.Thread | None = None
+
+    def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> None:
+        if event_type not in self._subscribers:
+            self._subscribers[event_type] = []
+        self._subscribers[event_type].append(handler)
+        print(f"Subscribed {handler.__name__} to {event_type}")
+
+    def unsubscribe(self, event_type: str, handler: Callable[[Event], None]) -> None:
+        if event_type in self._subscribers:
+            if handler in self._subscribers[event_type]:
+                self._subscribers[event_type].remove(handler)
+
+    def publish(self, event: Event) -> None:
+        self._event_queue.put(event)
+        print(f"Published event: {event.event_type}")
+
+    def _process_events(self) -> None:
+        while self._running:
+            try:
+                event = self._event_queue.get(timeout=1)
+                self._handle_event(event)
+                self._event_queue.task_done()
+            except:
+                continue
+
+    def _handle_event(self, event: Event) -> None:
+        handlers = self._subscribers.get(event.event_type, [])
+        for handler in handlers:
+            try:
+                handler(event)
+            except Exception as e:
+                print(f"Error in handler {handler.__name__}: {e}")
+
+    def start(self) -> None:
+        if not self._running:
+            self._running = True
+            self._thread = threading.Thread(target=self._process_events, daemon=True)
+            self._thread.start()
+            print("Event bus started")
+
+    def stop(self) -> None:
+        self._running = False
+        if self._thread:
+            self._thread.join()
+        print("Event bus stopped")
+
+
+# Event Handlers
+class EmailService:
+    def handle_user_created(self, event: Event) -> None:
+        user_data = event.data
+        print(f"EmailService: Sending welcome email to {user_data['email']}")
+
+    def handle_order_placed(self, event: Event) -> None:
+        order_data = event.data
+        print(f"EmailService: Sending order confirmation for {order_data['order_id']}")
+
+
+class InventoryService:
+    def handle_order_placed(self, event: Event) -> None:
+        order_data = event.data
+        print(f"InventoryService: Reserving inventory for order {order_data['order_id']}")
+
+    def handle_payment_processed(self, event: Event) -> None:
+        payment_data = event.data
+        print(f"InventoryService: Releasing inventory for order {payment_data['order_id']}")
+
+
+class ShippingService:
+    def handle_payment_processed(self, event: Event) -> None:
+        payment_data = event.data
+        print(f"ShippingService: Scheduling shipment for order {payment_data['order_id']}")
+
+
+# Event Producers
+class UserService:
+    def __init__(self, event_bus: EventBus) -> None:
+        self._event_bus = event_bus
+
+    def create_user(self, username: str, email: str) -> int:
+        user_id = 1  # Simplified
+        event = UserCreatedEvent(user_id, username, email)
+        self._event_bus.publish(event)
+        return user_id
+
+
+class OrderService:
+    def __init__(self, event_bus: EventBus) -> None:
+        self._event_bus = event_bus
+
+    def place_order(self, user_id: int, total: float) -> str:
+        order_id = "ORD-001"
+        event = OrderPlacedEvent(order_id, user_id, total)
+        self._event_bus.publish(event)
+        return order_id
+
+
+class PaymentService:
+    def __init__(self, event_bus: EventBus) -> None:
+        self._event_bus = event_bus
+
+    def process_payment(self, order_id: str, amount: float) -> str:
+        payment_id = "PAY-001"
+        event = PaymentProcessedEvent(payment_id, order_id, amount)
+        self._event_bus.publish(event)
+        return payment_id
+
+
+# Usage
+if __name__ == "__main__":
+    # Create event bus
+    event_bus = EventBus()
+    event_bus.start()
+
+    # Create services
+    email_service = EmailService()
+    inventory_service = InventoryService()
+    shipping_service = ShippingService()
+
+    # Subscribe to events
+    event_bus.subscribe("user_created", email_service.handle_user_created)
+    event_bus.subscribe("order_placed", email_service.handle_order_placed)
+    event_bus.subscribe("order_placed", inventory_service.handle_order_placed)
+    event_bus.subscribe("payment_processed", inventory_service.handle_payment_processed)
+    event_bus.subscribe("payment_processed", shipping_service.handle_payment_processed)
+
+    # Create event producers
+    user_service = UserService(event_bus)
+    order_service = OrderService(event_bus)
+    payment_service = PaymentService(event_bus)
+
+    # Produce events
+    user_id = user_service.create_user("alice", "alice@example.com")
+    order_id = order_service.place_order(user_id, 100.0)
+    payment_id = payment_service.process_payment(order_id, 100.0)
+
+    # Wait for events to process
+    import time
+
+    time.sleep(1)
+
+    event_bus.stop()
+```

@@ -1,0 +1,119 @@
+---
+description: Factory Method pattern for delegating object creation to subclasses.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Factory Method Pattern
+
+## Introduction
+
+The Factory Method pattern provides an interface for creating objects, but lets subclasses decide which class to
+instantiate. It encapsulates object creation and allows the creation logic to vary independently from the code that uses
+the objects.
+
+## When to Use
+
+* **Delegated Creation**: When you want to delegate object creation to subclasses
+* **Unknown Object Types**: When you don't know beforehand the exact types of objects your code will work with
+* **Extensibility**: When you want to allow users to extend your framework with new product types
+* **Class Hierarchy**: When you have a class hierarchy and need to create objects from different branches
+* **Configuration-Based**: When object creation depends on configuration or runtime conditions
+
+**Use Factory Method when:**
+
+- You can't anticipate the exact types of objects your code will work with
+- You want to provide a way for users to extend your framework
+- You want to decouple code from concrete classes
+- Object creation logic is complex and should be encapsulated
+
+## How to Use
+
+1. **Create Abstract Creator**: Define an abstract base class with an abstract factory method
+2. **Implement Concrete Creators**: Create subclasses that implement the factory method
+3. **Define Product Interface**: Create an abstract interface for products
+4. **Implement Products**: Create concrete product classes
+5. **Use Creator**: Client code uses the creator interface, not concrete products
+
+## Example
+
+```python
+from abc import ABC, abstractmethod
+
+
+# Product Interface
+class Logger(ABC):
+    @abstractmethod
+    def log(self, message: str) -> None:
+        pass
+
+
+# Concrete Products
+class FileLogger(Logger):
+    def __init__(self, filepath: str) -> None:
+        self.filepath = filepath
+
+    def log(self, message: str) -> None:
+        with open(self.filepath, "a") as f:
+            f.write(f"{message}\n")
+        print(f"Logged to file: {message}")
+
+
+class ConsoleLogger(Logger):
+    def log(self, message: str) -> None:
+        print(f"Console: {message}")
+
+
+class DatabaseLogger(Logger):
+    def __init__(self, connection_string: str) -> None:
+        self.connection_string = connection_string
+
+    def log(self, message: str) -> None:
+        print(f"Logged to database ({self.connection_string}): {message}")
+
+
+# Abstract Creator
+class LoggerFactory(ABC):
+    @abstractmethod
+    def create_logger(self) -> Logger:
+        pass
+
+    def log_message(self, message: str) -> None:
+        logger = self.create_logger()
+        logger.log(message)
+
+
+# Concrete Creators
+class FileLoggerFactory(LoggerFactory):
+    def __init__(self, filepath: str) -> None:
+        self.filepath = filepath
+
+    def create_logger(self) -> Logger:
+        return FileLogger(self.filepath)
+
+
+class ConsoleLoggerFactory(LoggerFactory):
+    def create_logger(self) -> Logger:
+        return ConsoleLogger()
+
+
+class DatabaseLoggerFactory(LoggerFactory):
+    def __init__(self, connection_string: str) -> None:
+        self.connection_string = connection_string
+
+    def create_logger(self) -> Logger:
+        return DatabaseLogger(self.connection_string)
+
+
+# Usage
+if __name__ == "__main__":
+    # Use different factories
+    file_factory = FileLoggerFactory("app.log")
+    file_factory.log_message("Application started")
+
+    console_factory = ConsoleLoggerFactory()
+    console_factory.log_message("Processing data")
+
+    db_factory = DatabaseLoggerFactory("postgresql://localhost/mydb")
+    db_factory.log_message("User logged in")
+```
