@@ -70,5 +70,13 @@
     "terminal.integrated.tabs.hideCondition": "never",
     "terminal.integrated.tabs.location": "right",
     "markdown.preview.scrollEditorWithPreview": true,
-    "markdown.preview.scrollPreviewWithEditor": true
+    "markdown.preview.scrollPreviewWithEditor": true,
+    "cursorpyright.analysis.autoSearchPaths": true,
+    "cursorpyright.analysis.diagnosticMode": "workspace",
+    "cursorpyright.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none"
+    },
+    "cursorpyright.analysis.extraPaths": [
+        "."
+    ]
 }
